@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Tymon\JWTAuth\Facades\JWTAuth;
-
+use Illuminate\Support\Facades\Redis;
 class CacheAuthUserMiddleware
 {
     public function handle(Request $request, Closure $next)

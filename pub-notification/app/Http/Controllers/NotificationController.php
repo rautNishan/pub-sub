@@ -4,21 +4,51 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use \App\Models\Notification;
+use App\Jobs\NotificationCreateJobs;
+use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\Response;
 class NotificationController extends Controller
 {
     // Create a new notification
     public function create(Request $request)
     {
-        // Validate incoming data
         $validated = $request->validate([
             'type' => ['required', 'string'],
             'payload' => ['required'],
         ]);
-        $userId = auth()->user()->id;
-        // Create the notification
-        $notification = Notification::create(['type' => $validated['type'], 'payload' => $validated['payload'], 'user_id' => (int) $userId]);
 
-        return response()->json($notification, 201);
+        $userId = auth()->user()->id;
+        $cacheKey = 'num_notification_' . $userId;
+
+        // Use Redis atomic operations for consistency
+        if (Cache::has($cacheKey)) {
+            $notificationNum = Cache::increment($cacheKey);
+
+            if ($notificationNum > 10) {
+                // Undo the increment
+                Cache::decrement($cacheKey);
+
+                return response()->json([
+                    'message' => 'You have reached your daily notification limit.',
+                    'status' => 'failed'
+                ], Response::HTTP_BAD_REQUEST);
+            }
+        } else {
+
+            // Set count to 1 and TTL to 24 hours
+            Cache::put($cacheKey, 1, now()->addDay());
+        }
+
+        NotificationCreateJobs::dispatch([
+            'type' => $validated['type'],
+            'payload' => $validated['payload'],
+            'user_id' => (int) $userId
+        ]);
+
+        return response()->json([
+            'message' => 'Notification update queued successfully',
+            'status' => 'pending'
+        ], Response::HTTP_ACCEPTED); // 202
     }
 
     // Update an existing notification by ID
