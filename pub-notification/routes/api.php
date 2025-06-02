@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CacheAuthUserMiddleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
@@ -17,6 +18,7 @@ Route::group([
     Route::post('register', [AuthController::class, 'register']);
 });
 
-Route::middleware(['auth:api'])->group(function () {
-    Route::get('me', action: [AuthController::class, 'me'])->name('me');
+Route::middleware([CacheAuthUserMiddleware::class])->group(function () {
+    Route::get('auth/me', action: [AuthController::class, 'me'])->name('me');
 });
+    

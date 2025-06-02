@@ -1,0 +1,41 @@
+services:
+  # larvel-app:
+  #   build:
+  #     context: ./pub-notification
+  #     dockerfile: Dockerfile
+  #   container_name: laravel-app
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./pub-notification/:/var/www
+  #   depends_on:
+  #     - larvel-db
+  #     - redis
+  #   command: >
+  #     sh -c "php artisan migrate --force &&
+  #            php artisan serve --host=0.0.0.0 --port=8000"
+
+  larvel-db:
+    image: postgres
+    container_name: laravel-postgres
+    ports:
+      - "${LARVEL_DB_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${LARVEL_DB_USERNAME}
+      POSTGRES_PASSWORD: ${LARVEL_DB_PASSWORD}
+      POSTGRES_DB: ${LARVEL_DB_DATABASE}
+    volumes:
+      - laravel_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+volumes:
+  laravel_postgres_data:
+  redis-data:

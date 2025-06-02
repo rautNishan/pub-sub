@@ -23,6 +23,8 @@ class User extends Authenticatable implements JWTSubject
         // 'name',
         'email',
         'password',
+
+        //To do soft delete
     ];
 
     /**
@@ -32,7 +34,7 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $hidden = [
         'password',
-        'remember_token',
+        // 'remember_token',
     ];
 
     /**

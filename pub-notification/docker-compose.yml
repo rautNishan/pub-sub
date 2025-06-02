@@ -1,30 +1,43 @@
-services:
-  larvel-db:
-    image: postgres
-    container_name: laravel-postgres
-    ports:
-      - '${DB_PORT}:5432'
-    environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_DATABASE}
-    volumes:
-      - laravel_postgres_data:/var/lib/postgresql/data
-
-volumes:
-  laravel_postgres_data:
+# services:
+#     larvel-app:
+#         build:
+#             context: .
+#             dockerfile: Dockerfile
+#         container_name: laravel-app
+#         ports:
+#             - "8000:8000"
+#         volumes:
+#             - .:/var/www
+#         depends_on:
+#             - larvel-db
+#         command: php artisan serve --host=0.0.0.0 --port=8000
 
 
-  # node-db:
-  #   image: postgres
-  #   container_name: node-postgres
-  #   ports:
-  #     - '${NODE_POSTGRES_PORT}:5432'
-  #   environment:
-  #     POSTGRES_USER: ${NODE_POSTGRES_USER_NAME}
-  #     POSTGRES_PASSWORD: ${NODE_POSTGRES_PASSWORD}
-  #     POSTGRES_DB: ${NODE_POSTGRES_DB_NAME}
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  # volumes:
-  #   postgres_data
+#     larvel-db:
+#         image: postgres
+#         container_name: laravel-postgres
+#         ports:
+#             - "${DB_PORT}:5432"
+#         environment:
+#             POSTGRES_USER: ${DB_USERNAME}
+#             POSTGRES_PASSWORD: ${DB_PASSWORD}
+#             POSTGRES_DB: ${DB_DATABASE}
+#         volumes:
+#             - laravel_postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#     laravel_postgres_data:
+
+#     # node-db:
+#     #   image: postgres
+#     #   container_name: node-postgres
+#     #   ports:
+#     #     - '${NODE_POSTGRES_PORT}:5432'
+#     #   environment:
+#     #     POSTGRES_USER: ${NODE_POSTGRES_USER_NAME}
+#     #     POSTGRES_PASSWORD: ${NODE_POSTGRES_PASSWORD}
+#     #     POSTGRES_DB: ${NODE_POSTGRES_DB_NAME}
+#     #   volumes:
+#     #     - postgres_data:/var/lib/postgresql/data
+#     # volumes:
+#     #   postgres_data
