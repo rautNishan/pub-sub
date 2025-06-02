@@ -38,7 +38,7 @@ class CacheAuthUserMiddleware
 
 
         if (!$user) {
-            $user = \App\Models\User::find($userId, ['email']);
+            $user = \App\Models\User::find($userId, ['id', 'email']);
 
             if (!$user) {
                 return response()->json(['error' => 'User not found'], 401);

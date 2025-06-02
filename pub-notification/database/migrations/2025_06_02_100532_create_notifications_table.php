@@ -12,13 +12,16 @@ return new class extends Migration {
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->string(column: 'type')->nullable();
-            $table->text(column: 'payload');
+            $table->unsignedBigInteger('user_id');  // foreign key column
+            $table->string('type');
+            $table->json('payload')->nullable();
             $table->enum('status', ['pending', 'processing', 'processed', 'failed'])->default('pending');
-            $table->unsignedInteger('retry_count')->default(0);
+            $table->integer('retry_count')->default(0);
             $table->timestamp('processed_at')->nullable();
             $table->timestamp('failed_at')->nullable();
             $table->timestamps();
+            // Foreign key constraint
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
