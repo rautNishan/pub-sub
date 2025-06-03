@@ -7,7 +7,7 @@ export class EmailNotificationHandler implements NotificationHandler {
   async handle(
     message: NotificationMessage,
     retries: number = 0
-  ): Promise<void> {
+  ): Promise<any> {
     const notificationService = NotificationService.getInstance();
     try {
       console.log(`Processing email notification: ${message.id}`);
@@ -21,18 +21,23 @@ export class EmailNotificationHandler implements NotificationHandler {
         user_id: message.user_id,
         type: message.type,
         payload: message.payload,
-        staus: message.status,
+        staus: "processed",
         retry_count: retries,
         porcessed_at: new Date(),
         failed_at: null,
       });
+      return {
+        notification_id: message.id,
+        status: "processed",
+        retry_count: retries,
+      };
     } catch (error) {
       if (retries >= 3) {
         await notificationService.create({
           notification_id: message.id,
           user_id: message.user_id,
           type: message.type,
-          payload: message.payload,
+          payload: "failed",
           staus: message.status,
           retry_count: retries,
           porcessed_at: new Date(),
@@ -44,12 +49,10 @@ export class EmailNotificationHandler implements NotificationHandler {
   }
 
   private async mockEmailSending(message: NotificationMessage): Promise<void> {
-    // Simulate email sending delay
     await new Promise((resolve) =>
       setTimeout(resolve, 1000 + Math.random() * 2000)
     );
 
-    // Mock failure scenario - 20% chance of failure
     const shouldFail = Math.random() < 0.4;
 
     if (shouldFail) {

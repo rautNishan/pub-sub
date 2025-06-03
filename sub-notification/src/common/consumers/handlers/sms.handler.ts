@@ -1,12 +1,78 @@
+import { NotificationService } from "../../../modules/notifications/services/notification.service";
 import { NotificationHandler } from "../interfaces/handler.interface";
 import { NotificationMessage } from "../interfaces/notification.message.interface";
 
 export class SmsNotificationHandler implements NotificationHandler {
-  async handle(message: NotificationMessage): Promise<void> {
-    console.log(`Processing SMS notification: ${message.id}`);
-    console.log(`Recipient: ${message.user_id}`);
-    console.log(`SMS payload:`, message.payload);
+  async handle(
+    message: NotificationMessage,
+    retries: number = 0
+  ): Promise<any> {
+    const notificationService = NotificationService.getInstance();
+    try {
+      console.log(`Processing SMS notification: ${message.id}`);
+      console.log(`Recipient: ${message.user_id}`);
+      console.log(`SMS payload:`, message.payload);
 
-    console.log(`SMS notification ${message.id} processed successfully`);
+      console.log(`SMS notification ${message.id} processed successfully`);
+      await this.mockSMSSending(message);
+      await notificationService.create({
+        notification_id: message.id,
+        user_id: message.user_id,
+        type: message.type,
+        payload: message.payload,
+        staus: "processed",
+        retry_count: retries,
+        porcessed_at: new Date(),
+        failed_at: null,
+      });
+      return {
+        notification_id: message.id,
+        status: "processed",
+        retry_count: retries,
+      };
+    } catch (error) {
+      if (retries >= 3) {
+        await notificationService.create({
+          notification_id: message.id,
+          user_id: message.user_id,
+          type: message.type,
+          payload: message.payload,
+          staus: "failed",
+          retry_count: retries,
+          porcessed_at: new Date(),
+          failed_at: new Date(),
+        });
+      }
+      throw error;
+    }
+  }
+
+  private async mockSMSSending(message: NotificationMessage): Promise<void> {
+    await new Promise((resolve) =>
+      setTimeout(resolve, 1000 + Math.random() * 2000)
+    );
+
+    const shouldFail = Math.random() < 0.4;
+
+    if (shouldFail) {
+      const failureTypes = [
+        "SMS_ERROR_CUSTOM_1",
+        "NUMBER_NOT_AVAILABLE",
+        "RATE_LIMIT_EXCEEDED",
+        "TEMPLATE_RENDERING_ERROR",
+      ];
+
+      const failureType =
+        failureTypes[Math.floor(Math.random() * failureTypes.length)];
+
+      console.log(
+        `Sms sending failed for notification ${message.id}: ${failureType}`
+      );
+      throw new Error(`Sms sending failed: ${failureType}`);
+    }
+
+    console.log(`Sms sent successfully to user ${message.user_id}`);
+
+    console.log(`Sent at: ${new Date().toISOString()}`);
   }
 }

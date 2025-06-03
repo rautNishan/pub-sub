@@ -48,8 +48,8 @@ export class RabbitMQConsumer implements ConsumerInterface {
 
     // Initialize handlers
     this.handlers = new Map([
-      ["email", new EmailNotificationHandler()],
-      ["sms", new SmsNotificationHandler()],
+      ["email", new EmailNotificationHandler() as NotificationHandler],
+      ["sms", new SmsNotificationHandler() as NotificationHandler],
     ]);
   }
 
@@ -192,7 +192,14 @@ export class RabbitMQConsumer implements ConsumerInterface {
       const handler = this.handlers.get(notificationData.type);
       const retryCount = this.getRetryCount(message);
       if (handler) {
-        await handler.handle(notificationData, retryCount);
+        const data = await handler.handle(notificationData, retryCount);
+        const toSend = Buffer.from(JSON.stringify(data));
+
+        //Send back to queue
+        await this.channel.sendToQueue("notification_status_updates", toSend, {
+          contentType: "application/json",
+          timestamp: Date.now(),
+        });
       }
 
       // Acknowledge the message after successful processing
@@ -233,6 +240,24 @@ export class RabbitMQConsumer implements ConsumerInterface {
         retry_count: retryCount,
         error: error.message,
       });
+
+      const failedPayload = Buffer.from(
+        JSON.stringify({
+          notification_id: message.properties.messageId ?? null,
+          status: "failed",
+          retry_count: this.getRetryCount(message),
+        })
+      );
+
+      await this.channel.sendToQueue(
+        "notification_status_updates",
+        failedPayload,
+        {
+          contentType: "application/json",
+          timestamp: Date.now(),
+          messageId: message.properties.messageId ?? undefined,
+        }
+      );
 
       await this.sendToDeadLetterQueue(message, queueType, error);
     }
