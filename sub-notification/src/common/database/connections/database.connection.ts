@@ -1,6 +1,7 @@
 import { DataSource } from "typeorm";
 import { config } from "../../configs";
 import { DatabaseException } from "../../exceptions/database.exceptions";
+import path from "path";
 
 export class DBConnection {
   private static dataSource: DataSource;
@@ -16,8 +17,8 @@ export class DBConnection {
         password: config.database.password,
         database: config.database.database,
         logging: config.database.logger === "true",
-        entities: [".src/common/**/*.entity{.ts,.js}"],
-        migrations: [".src/common/database/migrations/*{.ts,.js}"],
+        entities: [path.join(__dirname, "../../../modules/**/*.entity.js")],
+        migrations: [path.join(__dirname, "../../migrations/*.js")],
       });
     }
     try {

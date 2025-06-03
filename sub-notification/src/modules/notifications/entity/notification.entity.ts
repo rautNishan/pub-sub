@@ -8,6 +8,14 @@ export const NotificationEntityName = "notifications";
 export class NotificationEnity extends DataBaseBaseEntity {
   @Column({
     type: "int",
+    name: "notification_id",
+    nullable: false,
+    unique: false,
+  })
+  notification_id: number;
+
+  @Column({
+    type: "int",
     name: "user_id",
     nullable: false,
     unique: false,
@@ -36,8 +44,8 @@ export class NotificationEnity extends DataBaseBaseEntity {
   retry_count: number;
 
   @Column({ type: "timestamp", nullable: true })
-  processed_at: Date;
+  processed_at: Date | null;
 
   @Column({ type: "timestamp", nullable: true })
-  failed_at: Date;
+  failed_at: Date | null;
 }

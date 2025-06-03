@@ -22,6 +22,8 @@ export class RabbitMQConsumer implements ConsumerInterface {
   private channel: Channel | null = null;
   private config: RabbitMQConfig;
   private handlers: Map<string, NotificationHandler>;
+  private readonly MAX_RETRY_COUNT = 3;
+  private readonly RETRY_DELAY = 10000;
 
   constructor() {
     this.config = {
@@ -80,12 +82,46 @@ export class RabbitMQConsumer implements ConsumerInterface {
       throw new Error("Channel not initialized");
     }
 
+    // Setup main exchange
     await this.channel.assertExchange(this.config.exchange, "topic", {
+      durable: true,
+    });
+
+    // Setup retry exchange
+    await this.channel.assertExchange(
+      `${this.config.exchange}_retry`,
+      "direct",
+      {
+        durable: true,
+      }
+    );
+
+    // Setup dead letter exchange for failed messages
+    await this.channel.assertExchange(`${this.config.exchange}_dlx`, "direct", {
       durable: true,
     });
 
     for (const [queueType, queueConfig] of Object.entries(this.config.queues)) {
       await this.channel.assertQueue(queueConfig.name, {
+        durable: true,
+        arguments: {
+          "x-dead-letter-exchange": `${this.config.exchange}_retry`,
+          "x-dead-letter-routing-key": `${queueConfig.name}_retry`,
+        },
+      });
+
+      const retryQueueName = `${queueConfig.name}_retry`;
+      await this.channel.assertQueue(retryQueueName, {
+        durable: true,
+        arguments: {
+          "x-message-ttl": this.RETRY_DELAY,
+          "x-dead-letter-exchange": this.config.exchange,
+          "x-dead-letter-routing-key": queueConfig.routingKeys[0],
+        },
+      });
+
+      const dlqName = `${queueConfig.name}_dlq`;
+      await this.channel.assertQueue(dlqName, {
         durable: true,
       });
 
@@ -100,12 +136,21 @@ export class RabbitMQConsumer implements ConsumerInterface {
           `Bound queue ${queueConfig.name} to exchange ${this.config.exchange} with routing key: ${routingKey}`
         );
       }
-    }
 
-    // Setup dead letter exchange for failed messages
-    await this.channel.assertExchange(`${this.config.exchange}_dlx`, "direct", {
-      durable: true,
-    });
+      await this.channel.bindQueue(
+        retryQueueName,
+        `${this.config.exchange}_retry`,
+        `${queueConfig.routingKeys[0]}_retry`
+      );
+
+      await this.channel.bindQueue(
+        dlqName,
+        `${this.config.exchange}_dlx`,
+        `${queueConfig.name}_dlq`
+      );
+
+      console.log(`Setup retry mechanism for queue: ${queueConfig.name}`);
+    }
   }
 
   private async startConsuming(): Promise<void> {
@@ -145,34 +190,146 @@ export class RabbitMQConsumer implements ConsumerInterface {
       });
 
       const handler = this.handlers.get(notificationData.type);
-
+      const retryCount = this.getRetryCount(message);
       if (handler) {
-        await handler.handle(notificationData);
+        await handler.handle(notificationData, retryCount);
       }
 
       // Acknowledge the message after successful processing
       this.channel.ack(message);
     } catch (error) {
       console.error("Error processing message:", error);
+      await this.handleFailedMessage(message, queueType, error);
+    }
+  }
+  private async handleFailedMessage(
+    message: Message,
+    queueType: string,
+    error: any
+  ): Promise<void> {
+    if (!this.channel) {
+      return;
+    }
 
-      // Reject the message and send to dead letter queue
-      //   if (this.channel && message) {
-      //     this.channel.nack(message, false, false);
-      //   }
+    const retryCount = this.getRetryCount(message);
+    console.log("This is retry count while retrying: ", retryCount);
+
+    if (retryCount < this.MAX_RETRY_COUNT) {
+      // Retry the message
+      console.log(
+        `Retrying message (attempt ${retryCount + 1}/${this.MAX_RETRY_COUNT}):`,
+        {
+          routing_key: message.fields.routingKey,
+          error: error.message,
+        }
+      );
+
+      // Increment retry count and reject to retry queue
+      await this.rejectMessageForRetry(message, retryCount + 1);
+    } else {
+      // Max retries exceeded, send to dead letter queue
+      console.error(`Max retries exceeded for message, sending to DLQ:`, {
+        routing_key: message.fields.routingKey,
+        retry_count: retryCount,
+        error: error.message,
+      });
+
+      await this.sendToDeadLetterQueue(message, queueType, error);
     }
   }
 
-  private async close(): Promise<void> {
+  private getRetryCount(message: Message): number {
+    const headers = message.properties.headers || {};
+    return headers["x-retry-count"] || 0;
+  }
+
+  private async rejectMessageForRetry(
+    message: Message,
+    newRetryCount: number
+  ): Promise<void> {
+    if (!this.channel) return;
+
+    const payload = message.content;
+
+    const headers = {
+      ...(message.properties.headers || {}),
+      "x-retry-count": newRetryCount,
+    };
+
+    const routingKey = message.fields.routingKey;
+    console.log("This is routing key: ", routingKey);
+
+    this.channel.publish(
+      `${this.config.exchange}_retry`,
+      `${message.fields.routingKey}_retry`,
+      payload,
+      {
+        headers,
+        contentType: message.properties.contentType,
+        contentEncoding: message.properties.contentEncoding,
+        persistent: true,
+      }
+    );
+
+    this.channel.ack(message);
+  }
+
+  private async sendToDeadLetterQueue(
+    message: Message,
+    queueType: string,
+    error: any
+  ): Promise<void> {
+    if (!this.channel) {
+      return;
+    }
+
     try {
-      if (this.channel) {
-        await this.channel.close();
+      const queueConfig = Object.values(this.config.queues).find(
+        (q) =>
+          message.fields.routingKey &&
+          q.routingKeys.includes(message.fields.routingKey)
+      );
+      console.log("This is queue config: ", queueConfig);
+
+      if (queueConfig) {
+        const dlqRoutingKey = `${queueConfig.name}_dlq`;
+
+        // Add failure information to headers
+        const headers = { ...message.properties.headers };
+
+        headers["x-death-reason"] = error.message;
+        headers["x-death-time"] = new Date().toISOString();
+        headers["x-original-routing-key"] = message.fields.routingKey;
+        await this.channel.publish(
+          `${this.config.exchange}_dlx`,
+          dlqRoutingKey,
+          message.content,
+          {
+            ...message.properties,
+            headers,
+          }
+        );
+
+        console.log(`Message sent to dead letter queue: ${dlqRoutingKey}`);
       }
-      if (this.connection) {
-        await this.connection.close();
-      }
-      console.log("RabbitMQ connection closed");
-    } catch (error) {
-      console.error("Error closing RabbitMQ connection:", error);
+      this.channel.ack(message);
+    } catch (dlqError) {
+      console.error("Error sending message to DLQ:", dlqError);
+      this.channel.nack(message, false, false);
     }
   }
+
+  // private async close(): Promise<void> {
+  //   try {
+  //     if (this.channel) {
+  //       await this.channel.close();
+  //     }
+  //     if (this.connection) {
+  //       await this.connection.close();
+  //     }
+  //     console.log("RabbitMQ connection closed");
+  //   } catch (error) {
+  //     console.error("Error closing RabbitMQ connection:", error);
+  //   }
+  // }
 }

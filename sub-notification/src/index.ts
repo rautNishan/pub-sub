@@ -1,6 +1,7 @@
 import fastify from "fastify";
 import { config } from "./common/configs";
 import { startConsumer } from "./common/consumers/consumer";
+import { DBConnection } from "./common/database/connections/database.connection";
 
 const server = fastify();
 
@@ -14,7 +15,7 @@ async function start() {
     // Start Fastify server
     await server.listen({ port: 8080, host: "0.0.0.0" });
     server.log.info("Server listening on port 8080");
-
+    await DBConnection.connection();
     // Start consumer after server is ready
     await startConsumer();
   } catch (err) {
