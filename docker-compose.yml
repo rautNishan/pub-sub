@@ -27,14 +27,26 @@ services:
     volumes:
       - laravel_postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis
-    container_name: redis
+  node-db:
+    image: postgres
+    container_name: node-postgres
     ports:
-      - "6379:6379"
+      - "${NODE_DB_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${NODE_DB_USERNAME}
+      POSTGRES_PASSWORD: ${NODE_DB_PASSWORD}
+      POSTGRES_DB: ${NODE_DB_DATABASE}
     volumes:
-      - redis-data:/data
-    restart: unless-stopped
+      - node_postgres_data:/var/lib/postgresql/data
+
+  # redis:
+  #   image: redis
+  #   container_name: redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -51,5 +63,6 @@ services:
 
 volumes:
   laravel_postgres_data:
-  redis-data:
+  # redis-data:
   rabbitmq-data:
+  node_postgres_data:
