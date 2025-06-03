@@ -1,19 +1,44 @@
 services:
-  # larvel-app:
-  #   build:
-  #     context: ./pub-notification
-  #     dockerfile: Dockerfile
-  #   container_name: laravel-app
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - ./pub-notification/:/var/www
-  #   depends_on:
-  #     - larvel-db
-  #     - redis
-  #   command: >
-  #     sh -c "php artisan migrate --force &&
-  #            php artisan serve --host=0.0.0.0 --port=8000"
+  larvel-app:
+    build:
+      context: ./pub-notification
+      dockerfile: Dockerfile
+    container_name: laravel-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./pub-notification/:/var/www
+    depends_on:
+      - larvel-db
+      - redis
+      - rabbitmq
+    command: >
+      sh -c "php artisan migrate --force &&
+             php artisan serve --host=0.0.0.0 --port=8000"
+
+  laravel-worker:
+    build:
+      context: ./pub-notification
+      dockerfile: Dockerfile
+    container_name: laravel-worker
+    volumes:
+      - ./pub-notification/:/var/www
+    depends_on:
+      - larvel-app
+    command: php artisan queue:work
+    restart: unless-stopped
+
+  laravel-broker-consumer:
+    build:
+      context: ./pub-notification
+      dockerfile: Dockerfile
+    container_name: laravel-broker-consumer
+    volumes:
+      - ./pub-notification/:/var/www
+    depends_on:
+      - larvel-app
+    command: php artisan broker:consume-status
+    restart: unless-stopped
 
   larvel-db:
     image: postgres
@@ -38,15 +63,20 @@ services:
       POSTGRES_DB: ${NODE_DB_DATABASE}
     volumes:
       - node_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NODE_DB_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # redis:
-  #   image: redis
-  #   container_name: redis
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis-data:/data
-  #   restart: unless-stopped
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6378:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -60,9 +90,37 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     restart: unless-stopped
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  node-app:
+    build:
+      context: ./sub-notification
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      node-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    # restart: unless-stopped
+    environment:
+      - DB_USER_NAME=${NODE_DB_USERNAME}
+      - DB_PASSWORD=${NODE_DB_PASSWORD}
+      - DB_PORT=5432
+      - DB_HOST=node-db
+      - DB_NAME=${NODE_DB_DATABASE}
+      - RABBIT_MQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      - RABBIT_MQ_EXCHANGE=notifications_topic
 
 volumes:
   laravel_postgres_data:
-  # redis-data:
+  redis-data:
   rabbitmq-data:
   node_postgres_data:

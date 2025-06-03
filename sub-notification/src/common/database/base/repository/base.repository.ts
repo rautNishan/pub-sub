@@ -8,9 +8,11 @@ import {
   IOnlyEntityManager,
   IPaginatedData,
   IUpdateOptions,
+  IUpdateRawOptions,
 } from "../../interfaces/database.interface";
 import { DataBaseBaseEntity } from "../entities/base.entity";
 import { PAGINATION } from "../../constants/database.constant";
+import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 export class BaseRepository<T extends DataBaseBaseEntity>
   implements IBaseRepository<T>
 {
@@ -157,5 +159,23 @@ export class BaseRepository<T extends DataBaseBaseEntity>
       return await options.entityManage.remove(entity);
     }
     return await this._repo.remove(entity);
+  }
+
+  createQueryBuilder(alias: string) {
+    return this._repo.createQueryBuilder(alias);
+  }
+
+  async _updateRaw(
+    updateDto: QueryDeepPartialEntity<T>,
+    options: IUpdateRawOptions<T>
+  ): Promise<any> {
+    if (options?.entityManager) {
+      return await options.entityManager.update(
+        this._repo.target,
+        options.where,
+        updateDto
+      );
+    }
+    return await this._repo.update(options.where, updateDto);
   }
 }

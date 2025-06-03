@@ -1,6 +1,6 @@
 import { DeepPartial, Repository } from "typeorm";
 import { NotificationRepository } from "../repository/notification.repository";
-import { DBConnection } from "../../../common/database/connections/database.connection";
+import { DBConnection } from "../../../database/connections/database.connection";
 import { NotificationEnity } from "../entity/notification.entity";
 import {
   ICreateOptions,
@@ -10,7 +10,9 @@ import {
   IOnlyEntityManager,
   IPaginatedData,
   IUpdateOptions,
+  IUpdateRawOptions,
 } from "../../../common/database/interfaces/database.interface";
+import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 
 export class NotificationService {
   private _notificationRepo: NotificationRepository;
@@ -32,6 +34,15 @@ export class NotificationService {
 
   async create(data: any, options?: ICreateOptions) {
     return await this._notificationRepo.create(data, options);
+  }
+
+  async getSummary() {
+    return this._notificationRepo
+      .createQueryBuilder("n")
+      .select("n.status", "status")
+      .addSelect("COUNT(*)", "count")
+      .groupBy("n.status")
+      .getRawMany();
   }
 
   async update(
@@ -78,5 +89,31 @@ export class NotificationService {
     options?: IOnlyEntityManager
   ): Promise<NotificationEnity> {
     return await this._notificationRepo.hardDelete(entity, options);
+  }
+
+  async updateRaw(
+    data: QueryDeepPartialEntity<NotificationEnity>,
+    options: IUpdateRawOptions<NotificationEnity>
+  ) {
+    return await this._notificationRepo._updateRaw(data, options);
+  }
+
+  async createOrUpdate(data: any): Promise<any> {
+    const existing = await this._notificationRepo.getOne({
+      options: {
+        where: { notification_id: data.notification_id },
+      },
+    });
+
+    if (existing) {
+      // Update
+      await this._notificationRepo.update(
+        { notification_id: data.notification_id },
+        data
+      );
+      return { ...existing, ...data };
+    } else {
+      return this._notificationRepo.create(data);
+    }
   }
 }

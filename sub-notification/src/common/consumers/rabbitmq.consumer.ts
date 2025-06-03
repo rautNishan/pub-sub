@@ -241,9 +241,11 @@ export class RabbitMQConsumer implements ConsumerInterface {
         error: error.message,
       });
 
+      const content = message.content.toString();
+      const notificationData: NotificationMessage = JSON.parse(content);
       const failedPayload = Buffer.from(
         JSON.stringify({
-          notification_id: message.properties.messageId ?? null,
+          notification_id: notificationData.id,
           status: "failed",
           retry_count: this.getRetryCount(message),
         })

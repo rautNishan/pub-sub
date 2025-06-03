@@ -3,6 +3,7 @@ import {
   EntityManager,
   FindManyOptions,
   FindOneOptions,
+  FindOptionsWhere,
 } from "typeorm";
 
 //Base Repository Interface
@@ -32,6 +33,11 @@ export interface IFindByIdOptions<T> {
   options?: FindOneOptions<T>;
   withDeleted?: boolean;
   protectedUserId?: number;
+}
+
+export interface IUpdateRawOptions<T> {
+  entityManager?: EntityManager;
+  where: FindOptionsWhere<T> | string | string[] | number | number[];
 }
 
 export interface IFindOneOption<T> {

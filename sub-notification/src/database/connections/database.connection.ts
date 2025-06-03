@@ -1,6 +1,6 @@
 import { DataSource } from "typeorm";
-import { config } from "../../configs";
-import { DatabaseException } from "../../exceptions/database.exceptions";
+import { config } from "../../common/configs";
+import { DatabaseException } from "../../common/exceptions/database.exceptions";
 import path from "path";
 
 export class DBConnection {
@@ -8,17 +8,19 @@ export class DBConnection {
 
   public static async connection() {
     console.log("Trying to connect....");
+    console.log(path.join(__dirname, "../migrations/**/*.{ts,js}"));
     if (!DBConnection.dataSource) {
+      console.log(path.join(__dirname, "../../**/*.entity.{ts,js}"));
       DBConnection.dataSource = new DataSource({
         type: "postgres",
         host: config.database.host,
         port: Number(config.database.port) || 5432,
         username: config.database.username,
         password: config.database.password,
-        database: config.database.database,
+        database: config.database.name,
         logging: config.database.logger === "true",
-        entities: [path.join(__dirname, "../../../modules/**/*.entity.js")],
-        migrations: [path.join(__dirname, "../../migrations/*.js")],
+        entities: [path.join(__dirname, "../../**/*.entity.{ts,js}")],
+        migrations: [path.join(__dirname, "../migrations/**/*.{ts,js}")],
       });
     }
     try {

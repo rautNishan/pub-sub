@@ -17,7 +17,7 @@ class RabbitMqBroker implements NotificationBrokerInterface
     {
         try {
             $connection = new AMQPStreamConnection(
-                config('rabbitmq.host', 'localhost'),
+                config('rabbitmq.host', 'rabbitmq'),
                 config('rabbitmq.port', 5672),
                 config('rabbitmq.username', 'guest'),
                 config('rabbitmq.password', 'guest'),

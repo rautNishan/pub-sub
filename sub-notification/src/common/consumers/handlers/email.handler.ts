@@ -15,17 +15,18 @@ export class EmailNotificationHandler implements NotificationHandler {
       console.log(`Email payload:`, message.payload);
       console.log(`Retry count: ${retries}`);
       await this.mockEmailSending(message);
-      console.log(`Email notification ${message.id} processed successfully`);
-      await notificationService.create({
+      await notificationService.createOrUpdate({
         notification_id: message.id,
         user_id: message.user_id,
         type: message.type,
         payload: message.payload,
-        staus: "processed",
+        status: "processed",
         retry_count: retries,
-        porcessed_at: new Date(),
+        processed_at: new Date(),
         failed_at: null,
       });
+      console.log(`Email notification ${message.id} processed successfully`);
+
       return {
         notification_id: message.id,
         status: "processed",
@@ -33,14 +34,14 @@ export class EmailNotificationHandler implements NotificationHandler {
       };
     } catch (error) {
       if (retries >= 3) {
-        await notificationService.create({
-          notification_id: message.id,
-          user_id: message.user_id,
+        await notificationService.createOrUpdate({
+          notification_id: Number(message.id),
+          user_id: Number(message.user_id),
           type: message.type,
-          payload: "failed",
-          staus: message.status,
+          payload: message.payload,
+          status: "failed",
           retry_count: retries,
-          porcessed_at: new Date(),
+          processed_at: null,
           failed_at: new Date(),
         });
       }

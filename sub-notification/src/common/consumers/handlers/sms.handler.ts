@@ -13,18 +13,18 @@ export class SmsNotificationHandler implements NotificationHandler {
       console.log(`Recipient: ${message.user_id}`);
       console.log(`SMS payload:`, message.payload);
 
-      console.log(`SMS notification ${message.id} processed successfully`);
       await this.mockSMSSending(message);
-      await notificationService.create({
+      await notificationService.createOrUpdate({
         notification_id: message.id,
         user_id: message.user_id,
         type: message.type,
         payload: message.payload,
-        staus: "processed",
+        status: "processed",
         retry_count: retries,
-        porcessed_at: new Date(),
+        processed_at: new Date(),
         failed_at: null,
       });
+      console.log(`SMS notification ${message.id} processed successfully`);
       return {
         notification_id: message.id,
         status: "processed",
@@ -32,14 +32,14 @@ export class SmsNotificationHandler implements NotificationHandler {
       };
     } catch (error) {
       if (retries >= 3) {
-        await notificationService.create({
-          notification_id: message.id,
-          user_id: message.user_id,
+        await notificationService.createOrUpdate({
+          notification_id: Number(message.id),
+          user_id: Number(message.user_id),
           type: message.type,
           payload: message.payload,
-          staus: "failed",
+          status: "failed",
           retry_count: retries,
-          porcessed_at: new Date(),
+          processed_at: null,
           failed_at: new Date(),
         });
       }

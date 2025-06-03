@@ -1,5 +1,6 @@
 import { DataSource } from "typeorm";
-import { config } from "../configs";
+import { config } from "../common/configs";
+import path from "path";
 
 export const dataSource: DataSource = new DataSource({
   type: "postgres",
@@ -7,8 +8,8 @@ export const dataSource: DataSource = new DataSource({
   port: Number(config.database.port) || 5432,
   username: config.database.username,
   password: config.database.password,
-  database: config.database.database,
+  database: config.database.name,
   logging: config.database.logger === "true",
-  entities: ["./src/**/*.entity{.ts,.js}"],
-  migrations: ["./src/common/database/migrations/*{.ts,.js}"],
+  entities: [path.join(__dirname, "../**/*.entity.{ts,js}")],
+  migrations: [path.join(__dirname, "./migrations/**/*.{ts,js}")],
 });

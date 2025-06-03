@@ -7,9 +7,9 @@
     "start": "node ./dist/index.js",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "migration:create": "npm run typeorm migration:create",
-    "migration:generate": "npm run typeorm -- --dataSource=./src/common/database/data-source.ts migration:generate",
-    "migration:run": "npm run typeorm -- --dataSource=./src/common/database/data-source.ts migration:run",
-    "migration:revert": "npm run typeorm -- --dataSource=./src/common/database/data-source.ts migration:revert"
+    "migration:generate": "npm run typeorm -- --dataSource=./src/database/data-source.ts migration:generate",
+    "migration:run": "npm run typeorm -- --dataSource=./src/database/data-source.ts migration:run",
+    "migration:revert": "npm run typeorm -- --dataSource=./src/database/data-source.ts migration:revert"
   },
   "keywords": [],
   "author": "",
