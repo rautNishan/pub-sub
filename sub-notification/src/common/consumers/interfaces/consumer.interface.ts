@@ -1,4 +1,4 @@
-export interface ConsumerInterface {
+export interface BrokerInterface {
   consume(): Promise<void>;
 }
 

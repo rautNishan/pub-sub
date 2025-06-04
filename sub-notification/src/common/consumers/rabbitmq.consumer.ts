@@ -1,5 +1,5 @@
 import amqp, { Channel, Connection, Message } from "amqplib";
-import { ConsumerInterface } from "./interfaces/consumer.interface";
+import { BrokerInterface } from "./interfaces/consumer.interface";
 import { NotificationMessage } from "./interfaces/notification.message.interface";
 import { NotificationHandler } from "./interfaces/handler.interface";
 import { EmailNotificationHandler } from "./handlers/email.handler";
@@ -17,7 +17,7 @@ interface RabbitMQConfig {
   };
 }
 
-export class RabbitMQConsumer implements ConsumerInterface {
+export class RabbitMQConsumer implements BrokerInterface {
   private connection: Connection | null = null;
   private channel: Channel | null = null;
   private config: RabbitMQConfig;
