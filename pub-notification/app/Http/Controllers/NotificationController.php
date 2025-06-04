@@ -20,7 +20,6 @@ class NotificationController extends Controller
         $userId = auth()->user()->id;
         $cacheKey = 'num_notification_' . $userId;
 
-        // Use Redis atomic operations for consistency
         if (Cache::has($cacheKey)) {
             $notificationNum = Cache::increment($cacheKey);
 
