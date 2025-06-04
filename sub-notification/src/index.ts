@@ -31,9 +31,9 @@ async function registerRoutes() {
       return { summary };
     });
 
-    console.log("✅ Routes registered");
+    console.log("Routes registered");
   } catch (err) {
-    console.error("❌ Error registering routes:", err);
+    console.error("Error registering routes:", err);
     throw err;
   }
 }
